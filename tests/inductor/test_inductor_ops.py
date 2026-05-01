@@ -20,10 +20,11 @@ from utils_inductor import (
     ParameterizedTestMeta,
     cached_randn,
     cached_xavier,
+    compare,
+    compare_with_cpu,
     make_param_dict,
     unique_randn_along_dim,
 )
-import utils_inductor
 
 POINTWISE_UNARY_OPS_DICT = {
     "abs": torch.abs,
@@ -239,6 +240,25 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 ]
             ),
         },
+        ("test_einsum", "test_mm_relaxed"): {
+            "ops_dict": {
+                "einsum": lambda a, b: torch.einsum("mk, kn -> mn", a, b),
+            },
+            "param_sets": make_param_dict(
+                [
+                    ((67, 256), (256, 128)),
+                    ((55, 2), (2, 99)),
+                    ((67, 67), (67, 67)),
+                    ((67, 255), (255, 128)),
+                ]
+            ),
+            "expect_fail": [
+                "67x256_256x128",
+                "55x2_2x99",
+                "67x67_67x67",
+                "67x255_255x128",
+            ],
+        },
         ("test_bmm", "test_mm_relaxed"): {
             "ops_dict": {"bmm": torch.bmm},
             "param_sets": make_param_dict(
@@ -309,11 +329,13 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "2d_0": (0, cached_randn((63, 129))),
                 "2d_1": (1, cached_randn((63, 129))),
                 "2d_01": ((0, 1), cached_randn((63, 129))),
+                "2d_01": ((0, 1), cached_randn((63, 129))),
                 "3d_0": (0, cached_randn((3, 7, 9))),
                 "3d_1": (1, cached_randn((3, 7, 9))),
                 "3d_2": (2, cached_randn((3, 7, 9))),
                 "3d_01": ((0, 1), cached_randn((3, 7, 9))),
                 "3d_12": ((1, 2), cached_randn((3, 7, 9))),
+                "3d_012": ((0, 1, 2), cached_randn((3, 7, 9))),
                 "3d_012": ((0, 1, 2), cached_randn((3, 7, 9))),
                 "4d_0": (0, cached_randn((3, 7, 9, 32))),
                 "4d_1": (1, cached_randn((3, 7, 9, 32))),
@@ -326,6 +348,7 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
             "param_sets": {
                 "dim_0": (0, unique_randn_along_dim((3, 7), dim=0)),
                 "dim_1": (1, unique_randn_along_dim((3, 7), dim=1)),
+                "dim_01": ([0, 1], torch.ones((3, 7), dtype=torch.float16)),
                 "dim_01": ([0, 1], torch.ones((3, 7), dtype=torch.float16)),
             },
         },
@@ -353,7 +376,9 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "3d_dim_neg12": ((-1, -2), cached_randn((3, 7, 9))),
                 # 0D / scalar tensor
                 "scalar_tensor": (None, torch.tensor(5.0, dtype=torch.float16)),
+                "scalar_tensor": (None, torch.tensor(5.0, dtype=torch.float16)),
             },
+            "expect_fail": ["scalar_tensor"],
         },
         ("test_amax_keepdim0", "test_reduce_keepdim0_cpu"): {
             "ops_dict": {"amax": torch.amax},
@@ -424,6 +449,27 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     ((2, 3, 8, 32, 32),),
                 ]
             ),
+        },
+        ("test_max_default", "test_reduce_cpu"): {
+            "ops_dict": {
+                "max": torch.max,
+            },
+            "param_sets": {
+                "1d_float16": (unique_randn_along_dim((64,), dtype=torch.float16),),
+                "2d_float16": (unique_randn_along_dim((8, 64), dtype=torch.float16),),
+                "3d_float16": (
+                    unique_randn_along_dim((2, 4, 64), dtype=torch.float16),
+                ),
+                "1d_int64": (unique_randn_along_dim((64,), dtype=torch.int64),),
+                "2d_int64": (unique_randn_along_dim((67, 256), dtype=torch.int64),),
+            },
+            "expect_fail": [
+                "1d_float16",
+                "2d_float16",
+                "3d_float16",
+                "1d_int64",
+                "2d_int64",
+            ],
         },
         ("test_max_default", "test_reduce_cpu"): {
             "ops_dict": {
@@ -550,11 +596,15 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "2d_dim_1": (1, cached_randn((67, 256))),  # sparse tensor output
                 "2d_dim_01": ([0, 1], cached_randn((67, 256))),
                 "3d_dim_0": (0, cached_randn((67, 71, 256), scale=0.01)),
+                "2d_dim_01": ([0, 1], cached_randn((67, 256))),
+                "3d_dim_0": (0, cached_randn((67, 71, 256), scale=0.01)),
                 "3d_dim_1": (1, cached_randn((67, 71, 256), scale=0.01)),
                 "3d_dim_2": (
                     2,
                     cached_randn((67, 71, 256), scale=0.01),
                 ),  # sparse tensor output
+                "3d_dim_01": ([0, 1], cached_randn((67, 71, 256), scale=0.01)),
+                "3d_dim_012": ([0, 1, 2], cached_randn((67, 71, 256), scale=0.01)),
                 "3d_dim_01": ([0, 1], cached_randn((67, 71, 256), scale=0.01)),
                 "3d_dim_012": ([0, 1, 2], cached_randn((67, 71, 256), scale=0.01)),
             },
@@ -567,12 +617,15 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "2d_dim_0": (0, cached_randn((67, 256))),
                 "2d_dim_1": (1, cached_randn((67, 256))),  # sparse tensor output
                 "2d_dim_01": ([0, 1], cached_randn((67, 256))),
+                "2d_dim_01": ([0, 1], cached_randn((67, 256))),
                 "3d_dim_0": (0, cached_randn((3, 5, 256), scale=0.1)),
                 "3d_dim_1": (1, cached_randn((67, 71, 256), scale=0.1)),
                 "3d_dim_2": (
                     2,
                     cached_randn((67, 71, 256), scale=0.1),
                 ),  # sparse tensor output
+                "3d_dim_01": ([0, 1], cached_randn((67, 71, 256), scale=0.1)),
+                "3d_dim_012": ([0, 1, 2], cached_randn((67, 71, 256), scale=0.1)),
                 "3d_dim_01": ([0, 1], cached_randn((67, 71, 256), scale=0.1)),
                 "3d_dim_012": ([0, 1, 2], cached_randn((67, 71, 256), scale=0.1)),
                 "4d_dim_0": (0, cached_randn((6, 7, 12, 256), scale=0.1)),
@@ -1509,7 +1562,11 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "fp16_signed_0": (
                     torch.tensor([0.0, -0.0, 1.0, -1.0], dtype=torch.float16),
                 ),
+                "fp16_signed_0": (
+                    torch.tensor([0.0, -0.0, 1.0, -1.0], dtype=torch.float16),
+                ),
             },
+            "expect_fail": ["fp16_signed_0"],
             "expect_fail": ["fp16_signed_0"],
         },
         (
@@ -1593,6 +1650,10 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     torch.zeros(128, dtype=torch.bool),  # bool tensor
                     (cached_randn((128,)) > 0).to(dtype=torch.float16),  # float tensor
                 ),
+                "float2bool": (
+                    torch.zeros(128, dtype=torch.bool),  # bool tensor
+                    (cached_randn((128,)) > 0).to(dtype=torch.float16),  # float tensor
+                ),
                 "bool2float": (
                     torch.zeros(128, dtype=torch.float16),  # float tensor
                     cached_randn((128,)) > 0,  # bool tensor
@@ -1618,6 +1679,7 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     torch.full((8, 16, 32, 64, 128), float('nan'))
                 ),
             },
+            "expect_fail": ["float2bool"],
             "expect_fail": ["float2bool"],
         },
         (
@@ -1694,6 +1756,9 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "3d2": (2, cached_randn((3, 4, 128))),
                 "2d1": (1, cached_randn((4, 128))),
                 "4d3": (3, cached_randn((2, 3, 4, 128))),
+                "3d2": (2, cached_randn((3, 4, 128))),
+                "2d1": (1, cached_randn((4, 128))),
+                "4d3": (3, cached_randn((2, 3, 4, 128))),
             },
         },
         (
@@ -1763,7 +1828,11 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "1d1": (1, cached_randn((4, 128)), cached_randn((4,))),
                 "2d2": (2, cached_randn((3, 4, 128)), cached_randn((3, 4))),
                 "3d3": (3, cached_randn((2, 3, 4, 128)), cached_randn((2, 3, 4))),
+                "1d1": (1, cached_randn((4, 128)), cached_randn((4,))),
+                "2d2": (2, cached_randn((3, 4, 128)), cached_randn((3, 4))),
+                "3d3": (3, cached_randn((2, 3, 4, 128)), cached_randn((2, 3, 4))),
             },
+            "expect_fail": ["1d1", "2d2", "3d3"],
             "expect_fail": ["1d1", "2d2", "3d3"],
         },
         ("test_attention", "test_attention_cpu"): {
@@ -2120,6 +2189,34 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     True,
                     True,
                 ),
+                "mha_decode": (
+                    cached_randn(
+                        (2, 1, 32, 128), differentiation=1, dtype=torch.float16
+                    ),
+                    cached_randn(
+                        (2, 257, 32, 128), differentiation=2, dtype=torch.float16
+                    ),
+                    cached_randn(
+                        (2, 257, 32, 128), differentiation=3, dtype=torch.float16
+                    ),
+                    False,
+                    False,
+                ),
+                "gqa_decode": (
+                    cached_randn(
+                        (2, 1, 32, 128), differentiation=1, dtype=torch.float16
+                    ),
+                    cached_randn(
+                        (2, 257, 8, 128), differentiation=2, dtype=torch.float16
+                    ),
+                    cached_randn(
+                        (2, 257, 8, 128), differentiation=3, dtype=torch.float16
+                    ),
+                    False,
+                    True,
+                ),
+            },
+            "expect_fail": ["mha_decode", "gqa_decode"],
                 "mha_decode": (
                     cached_randn(
                         (2, 1, 32, 128), differentiation=1, dtype=torch.float16
@@ -3315,7 +3412,7 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
     @pytest.mark.filterwarnings("ignore::torch_spyre.ops.fallbacks.FallbackWarning")
     @pytest.mark.filterwarnings("ignore:Backend Spyre does not support int64")
     def test_reduce_cpu(self, op, x):
-        self.compare_with_cpu(lambda x: op(x), x)
+        compare_with_cpu(lambda x: op(x), x)
 
     @pytest.mark.filterwarnings("ignore::torch_spyre.ops.fallbacks.FallbackWarning")
     @pytest.mark.filterwarnings("ignore:Backend Spyre does not support int64")
