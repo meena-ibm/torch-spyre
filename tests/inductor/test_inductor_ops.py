@@ -1606,10 +1606,10 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     cached_randn(((5, 10, 64, 128, 128)), dtype=torch.float16), 
                     cached_randn(((5, 10, 64, 128, 128)), dtype=torch.float16)
                 ),
-                "5d_with_ones": (
+                "5d_with_ones": {
                     torch.ones(2, 10, 3, 32, 32, dtype=torch.float32),
                     torch.empty(2, 10, 3, 32, 32, dtype=torch.float32)
-                ),
+                },
                 "5d_with_empty": (
                     cached_randn(((8, 16, 32, 64, 128)), dtype=torch.float16),
                     torch.empty((8, 16, 32, 64, 128,), dtype=torch.float16)
@@ -1665,7 +1665,6 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                      torch.full((2, 3, 4, 5, 6), 1e-38),
                      torch.zeros(2, 3, 4, 5, 6)
                 ),
-                #Test copy_ with strided data to guarantee memory correctness
                 "5d_large_strided" : (
                     torch.full((8, 16, 32, 64, 128), 1e38)[::2, ::2, ::2, ::2, ::2],
                     torch.zeros(4, 8, 16, 32, 64)
