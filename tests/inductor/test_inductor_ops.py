@@ -1396,8 +1396,11 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     torch.ceil(cached_randn((2, 3, 4, 5, 6), abs=True, scale=9.9)).to(
                         dtype=torch.float16
                         ),
-                )            
-                          
+                ),                     
+                "signed_zero": (
+                    torch.tensor([-0.0, 0.0, -0.0, 0.0], dtype=torch.float16),
+                    torch.tensor([0.0, -0.0, 0.0, -0.0], dtype=torch.float16),
+                ),
             },
         },
         ("test_cmp_scalar_int64", "test_cmp_scalar_int64_cpu"): {
@@ -2868,37 +2871,9 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 ),
             },
             "expect_fail": ["mha_decode", "gqa_decode"],
-                "mha_decode": (
-                    cached_randn(
-                        (2, 1, 32, 128), differentiation=1, dtype=torch.float16
-                    ),
-                    cached_randn(
-                        (2, 257, 32, 128), differentiation=2, dtype=torch.float16
-                    ),
-                    cached_randn(
-                        (2, 257, 32, 128), differentiation=3, dtype=torch.float16
-                    ),
-                    False,
-                    False,
-                ),
-                "gqa_decode": (
-                    cached_randn(
-                        (2, 1, 32, 128), differentiation=1, dtype=torch.float16
-                    ),
-                    cached_randn(
-                        (2, 257, 8, 128), differentiation=2, dtype=torch.float16
-                    ),
-                    cached_randn(
-                        (2, 257, 8, 128), differentiation=3, dtype=torch.float16
-                    ),
-                    False,
-                    True,
-                ),
-            },
-            "expect_fail": ["mha_decode", "gqa_decode"],
         },
         ("test_split", "test_split_cpu"): {
-            "ops_dict": {
+                "ops_dict": {
                 "exp": (
                     lambda dim, index, x: (
                         torch.exp(torch.split(x, x.size()[dim] // 3, dim=dim)[index]),
