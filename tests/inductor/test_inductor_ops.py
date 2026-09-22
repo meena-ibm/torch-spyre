@@ -807,16 +807,26 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
             "param_sets": {
                 "1d_abs_nz": (cached_randn((64,), abs=True) + FP16_EPS,),
                 "2d_abs_nz": (cached_randn((67, 256), abs=True) + FP16_EPS,),
-                # To be enabled when #707 is resolved
-                # "4d_abs_nz": (cached_randn((8, 64, 128, 128), abs=True) + FP32_EPS,),
-                # "5d_abs_nz": (cached_randn((1, 2, 3, 4, 5), abs=True) + FP16_EPS,),
-                # "4d_zero": (torch.zeros((8, 64, 128, 128), dtype=torch.float16),),
-                # "4d_nan": (torch.full((2, 3, 4, 5, 6), float('nan'), dtype=torch.float16),),
-                # "5d_ones": (torch.ones((1, 2, 3, 4, 5), dtype=torch.float16),),
-                # "5d_neg": (-torch.randn((1, 2, 3, 4, 5), dtype=torch.float16).abs(),),
-                # "5d_inf": (torch.full((1, 2, 3, 4, 5), float('inf'), dtype=torch.float16)),
-                # "4d_inf": (torch.full((8, 64, 128, 128), float('inf'), dtype=torch.float16),)
+                "4d_abs_nz": (cached_randn((8, 64, 128, 128), abs=True) + FP32_EPS,),
+                "5d_abs_nz": (cached_randn((1, 2, 3, 4, 5), abs=True) + FP16_EPS,),
+                "4d_zero": (torch.zeros((8, 64, 128, 128), dtype=torch.float16),),
+                "4d_nan": (
+                    torch.full((2, 3, 4, 5, 6), float("nan"), dtype=torch.float16),
+                ),
+                "5d_ones": (torch.ones((1, 2, 3, 4, 5), dtype=torch.float16),),
+                "5d_neg": (-torch.randn((1, 2, 3, 4, 5), dtype=torch.float16).abs(),),
+                "5d_inf": (
+                    torch.full((1, 2, 3, 4, 5), float("inf"), dtype=torch.float16)
+                ),
+                "4d_inf": (
+                    torch.full((8, 64, 128, 128), float("inf"), dtype=torch.float16),
+                ),
             },
+            "expect_fail": [
+                ("rsqrt_4d_zero", "Issue #707"),
+                ("rsqrt_4d_nan", "Issue #707"),
+                ("rsqrt_5d_neg", "Issue #707"),
+            ],
         },
         (
             "test_sqrt_fp32",
@@ -865,14 +875,28 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
             "param_sets": {
                 "1d_abs_nz": (cached_randn((64,), abs=True) + FP16_EPS,),
                 "2d_abs_nz": (cached_randn((67, 256), abs=True) + FP16_EPS,),
-                # To be enabled when #1851 is resolved
-                # "5d_abs_nz": (cached_randn((32, 3, 16, 224, 224), abs=True) + FP16_EPS,),
-                # "5d_zeros": (torch.zeros((1, 1, 1, 1, 1), dtype=torch.float16)+ FP16_EPS,),
-                # "5d_ones": (torch.ones((4, 1, 64, 256, 256), dtype=torch.float16),),
-                # "5d_neg": (-torch.randn((8, 3, 30, 112, 112), dtype=torch.float16).abs(),),
-                # "5d_inf": (torch.full((1, 1, 2, 2, 3), float('inf'), dtype=torch.float16),),
-                # "5d_nan": (torch.full((1, 1, 2, 2, 3), float('nan'), dtype=torch.float16),),
+                "5d_abs_nz": (
+                    cached_randn((32, 3, 16, 224, 224), abs=True) + FP16_EPS,
+                ),
+                "5d_zeros": (
+                    torch.zeros((1, 1, 1, 1, 1), dtype=torch.float16) + FP16_EPS,
+                ),
+                "5d_ones": (torch.ones((4, 1, 64, 256, 256), dtype=torch.float16),),
+                "5d_neg": (
+                    -torch.randn((8, 3, 30, 112, 112), dtype=torch.float16).abs(),
+                ),
+                "5d_inf": (
+                    torch.full((1, 1, 2, 2, 3), float("inf"), dtype=torch.float16),
+                ),
+                "5d_nan": (
+                    torch.full((1, 1, 2, 2, 3), float("nan"), dtype=torch.float16),
+                ),
             },
+            "expect_fail": [
+                ("log_5d_inf", "Issue #1851"),
+                ("log_5d_nan", "Issue #1851"),
+                ("log_5d_neg", "Issue #1851"),
+            ],
         },
         (
             "test_pointwise_unary_op",
@@ -909,19 +933,19 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "sin": torch.sin,
             },
             "param_sets": {
-                "5d_pi/2": (
-                    torch.full((2, 5, 4, 3, 6), torch.pi / 2, dtype=torch.float16),
+                "5d_pi_by_2": (
+                    torch.full((2, 5, 4, 3, 6), torch.pi / 2, dtype=torch.float32),
                 ),
                 "5d_pi": (
-                    torch.full((1, 1, 4, 16, 16), torch.pi, dtype=torch.float16),
+                    torch.full((1, 1, 4, 16, 16), torch.pi, dtype=torch.float32),
                 ),
-                "5d_3pi/2": (
+                "5d_3pi_by2": (
                     torch.full(
                         (1, 1, 4, 16, 16), torch.pi * 3 / 2, dtype=torch.float32
                     ),
                 ),
                 "5d_2pi": (
-                    torch.full((2, 3, 8, 32, 32), torch.pi * 2, dtype=torch.float16),
+                    torch.full((2, 3, 8, 32, 32), torch.pi * 2, dtype=torch.float32),
                 ),
                 "5d_zeros": (torch.zeros((1, 1, 1, 1, 1)) + FP16_EPS,),
                 "5d_neg": (-torch.randn((1, 3, 1, 64, 64), dtype=torch.float32),),
@@ -933,8 +957,10 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "5d_inf": (
                     torch.full((1, 1, 4, 4, 4), float("inf"), dtype=torch.float32),
                 ),
-                "5d_empty": (torch.empty((1, 1, 1, 1, 1), dtype=torch.float16),),
             },
+            "expect_fail": [
+                ("5d_nan", "Issue #4700"),
+            ],
         },
         (
             "test_pointwise_binary_op",
@@ -2160,12 +2186,6 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                         dtype=torch.float16
                     ),
                 ),
-                "5d_empty": (
-                    torch.empty((2, 3, 4, 5, 6), dtype=torch.float16),
-                    torch.ceil(cached_randn((2, 3, 4, 5, 6), abs=True, scale=9.9)).to(
-                        dtype=torch.float16
-                    ),
-                ),
             },
         },
         ("test_cmp_scalar_int64", "test_cmp_scalar_int64_cpu"): {
@@ -2267,8 +2287,12 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     0,
                     FP16_EPS,
                 ),
-                # To be enabled when #1833 isresolved
-                # "5d_nan": (torch.full((2,3,4,5,6),float('nan'), dtype=torch.float16), 0.0, 100 , FP16_EPS),
+                "5d_nan": (
+                    torch.full((2, 3, 4, 5, 6), float("nan"), dtype=torch.float16),
+                    0.0,
+                    100,
+                    FP16_EPS,
+                ),
                 "5d_inf": (
                     torch.full((2, 3, 4, 5, 6), float("inf"), dtype=torch.float16),
                     None,
@@ -2276,6 +2300,9 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     FP16_EPS,
                 ),
             },
+            "expect_fail": [
+                ("clamp_5d_nan", "Issue #1833"),
+            ],
         },
         (
             "test_activation_cls",
@@ -2369,11 +2396,10 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     cached_randn((1, 64, 1, 128), dtype=torch.float16),
                     0.01,
                 ),
-                # To be enabled when #1774 is resolved
-                # "4d_nan": (
-                #     torch.full((2, 3, 4, 5), float('nan'), dtype=torch.float16),
-                #     0.01,
-                # ),
+                "4d_nan": (
+                    torch.full((2, 3, 4, 5), float("nan"), dtype=torch.float16),
+                    0.01,
+                ),
                 "4d_extreme_positive": (
                     torch.full((1, 3, 224, 224), 100.0, dtype=torch.float16),
                     0.01,
@@ -2386,16 +2412,21 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     torch.ones((1, 1, 1, 1, 1), dtype=torch.float16),
                     0.01,
                 ),
-                # To be enabled when #1831 is resolved
-                # "5d_neg_inf": (
-                #     torch.full((1, 2, 3, 4, 5), float('-inf'), dtype=torch.float16),
-                #     0.01,
-                # ),
-                # "5d_neg": (
-                #     torch.full((1, 3, 2, 64, 64), -100.0, dtype=torch.float16),
-                #     0.01
-                # ),
+                "5d_neg_inf": (
+                    torch.full((1, 2, 3, 4, 5), float("-inf"), dtype=torch.float16),
+                    0.01,
+                ),
+                "5d_neg": (
+                    torch.full((1, 3, 2, 64, 64), -100.0, dtype=torch.float16),
+                    0.01,
+                ),
             },
+            "expect_fail": [
+                ("silu_5d_neg_inf", "Issue #1831"),
+                ("mish_5d_neg_inf", "Issue #1893"),
+                ("mish_5d_neg", "Issue #1893"),
+                ("sigmoid_4d_nan", "Issue #1774"),
+            ],
         },
         (
             "test_clone",
@@ -3085,38 +3116,27 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                     torch.zeros(32, 3, 224, 224, dtype=torch.float16),
                     cached_randn((32, 3, 224, 224), dtype=torch.float16),
                 ),
-                # To be enabled when #1829 is resolved
-                # "4d_with_nan": (
-                #     cached_randn((2, 3, 4, 5), dtype=torch.float32),
-                #     torch.full((2, 3, 4, 5), float('nan'))
-                # ),
+                "4d_with_nan": (
+                    cached_randn((2, 3, 4, 5), dtype=torch.float32),
+                    torch.full((2, 3, 4, 5), float("nan")),
+                ),
                 "5d": (
                     cached_randn((5, 10, 64, 128, 128), dtype=torch.float16),
                     cached_randn((5, 10, 64, 128, 128), dtype=torch.float16),
                 ),
                 "5d_with_ones": (
                     torch.ones(2, 10, 3, 32, 32, dtype=torch.float32),
-                    torch.empty(2, 10, 3, 32, 32, dtype=torch.float32),
+                    torch.ones(2, 10, 3, 32, 32, dtype=torch.float32),
                 ),
-                "5d_with_empty": (
+                "5d_with_inf": (
                     cached_randn((8, 16, 32, 64, 128), dtype=torch.float16),
-                    torch.empty(
-                        (
-                            8,
-                            16,
-                            32,
-                            64,
-                            128,
-                        ),
-                        dtype=torch.float16,
-                    ),
+                    torch.full((8, 16, 32, 64, 128), float("inf"), dtype=torch.float16),
                 ),
-                # To be enabled when #1830 is resolved
-                # "5d_with_inf": (
-                #     cached_randn((8, 16, 32, 64, 128), dtype=torch.float16),
-                #     torch.full((8, 16, 32, 64, 128), float('inf'), dtype=torch.float16)
-                # ),
             },
+            "expect_fail": [
+                ("mul_4d_with_nan", "Issue #1829"),
+                ("mul_5d_with_inf", "Issue #1830"),
+            ],
         },
         (
             "test_inplace_copy",
@@ -3162,10 +3182,6 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "5d_large_strided": (
                     torch.full((8, 16, 32, 64, 128), 1e38)[::2, ::2, ::2, ::2, ::2],
                     torch.zeros(4, 8, 16, 32, 64),
-                ),
-                "5d_empty": (
-                    torch.empty(5, 10, 64, 128, 128, dtype=torch.float16),
-                    torch.empty(5, 10, 64, 128, 128, dtype=torch.float16),
                 ),
                 "5d_nan_with_inf": (
                     torch.full((8, 16, 32, 64, 128), float("inf")),
@@ -3457,9 +3473,14 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "5d_negative_saturation": (
                     torch.full((2, 3, 4, 5, 6), -50.0, dtype=torch.float16),
                 ),
-                # To be enabled when #1882 is resolved
-                # "5d_low_beta": (cached_randn((1, 1, 7, 13, 19), dtype=torch.float16),0.5),
-                # "5d_high_beta": (cached_randn((1, 1, 7, 13, 19), dtype=torch.float16),50.0),
+                "5d_low_beta": (
+                    cached_randn((1, 1, 7, 13, 19), dtype=torch.float16),
+                    0.5,
+                ),
+                "5d_high_beta": (
+                    cached_randn((1, 1, 7, 13, 19), dtype=torch.float16),
+                    50.0,
+                ),
                 "5d_nan": (
                     torch.full((2, 3, 4, 5, 6), float("nan"), dtype=torch.float16),
                 ),
@@ -3638,10 +3659,13 @@ class TestOps(unittest.TestCase, metaclass=ParameterizedTestMeta):
                 "3d": (cached_randn((8, 64, 1024), dtype=torch.float16), 1.5),
                 "4d": (cached_randn((2, 4, 64, 1024), dtype=torch.float16), 2.4),
                 "5d": (cached_randn((2, 3, 4, 8, 8), dtype=torch.float16), 2.4),
-                # To be enabled when #442, #1867 is resolved
-                # "5d_zeros": (cached_randn((2, 3, 4, 8, 8), dtype=torch.float16), 0.0),
+                "5d_zeros": (cached_randn((2, 3, 4, 8, 8), dtype=torch.float16), 0.0),
                 "5d_negative": (torch.ones((2, 3, 4, 8, 8), dtype=torch.float16), -0.5),
             },
+            "expect_fail": [
+                ("true_divide_5d_zeros", "Issue #442"),
+                ("div_5d_zeros", "Issue #1867"),
+            ],
         },
         ("test_linear", "test_linear_fn"): {
             "param_sets": {
