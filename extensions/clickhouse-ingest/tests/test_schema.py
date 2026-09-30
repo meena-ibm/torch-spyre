@@ -17,16 +17,17 @@ built, so pair equality against the pre-refactor output is a complete correctnes
 
 import pytest
 from spyre_clickhouse_ingest.schema import (
-    ARTIFACTS,
     ARTIFACT_REFS,
     ARTIFACT_RESULTS,
     ARTIFACT_TAGS,
-    BENCHMARKS,
+    ARTIFACTS,
     BENCHMARK_RUNS,
-    TEST_CASES,
-    TEST_CASE_RUNS,
-    TABLES,
+    BENCHMARKS,
+    IDENTITY_LOOKUP_CHUNK,
     STATUS_VALUES,
+    TABLES,
+    TEST_CASE_RUNS,
+    TEST_CASES,
     SchemaError,
     dep_component,
     dep_id12,
@@ -40,12 +41,14 @@ class FakeClient:
         self.known = list(known)
         self.inserts = []
         self.queries = []
+        self.params = []
 
     def insert(self, table, rows, column_names=None, database=None):
         self.inserts.append((table, rows, column_names, database))
 
     def query(self, sql, parameters=None):
         self.queries.append(sql)
+        self.params.append(parameters)
         asked = set(parameters["ids"])
 
         class R:
@@ -280,6 +283,27 @@ def test_identity_dedup_writes_nothing_when_all_are_known():
     assert c.inserts == []
 
 
+def test_identity_lookup_is_chunked_under_the_http_field_limit():
+    ids = [f"id-{i}" for i in range(2 * IDENTITY_LOOKUP_CHUNK + 1)]
+    c = FakeClient(known=[ids[0], ids[-1]])
+    rows = {
+        i: {
+            "test_case_id": i,
+            "component": "c",
+            "classname": "k",
+            "name": i,
+            "tags": [],
+        }
+        for i in ids
+    }
+    assert insert_identities(c, TEST_CASES, rows) == len(ids) - 2
+    assert [len(p["ids"]) for p in c.params] == [
+        IDENTITY_LOOKUP_CHUNK,
+        IDENTITY_LOOKUP_CHUNK,
+        1,
+    ]
+
+
 def test_identity_dedup_on_a_fact_table_is_a_programming_error():
     with pytest.raises(SchemaError, match="no identity column"):
         insert_identities(FakeClient(), TEST_CASE_RUNS, {"x": {}})
@@ -293,8 +317,9 @@ def test_fact_tables_declare_no_identity_and_dimensions_do():
 
 
 def test_registry_covers_exactly_the_v2_tables():
-    # The functional/benchmark four, plus the artifact four. Pinned as an exact set so adding a
-    # table to the DDL without modelling it here (or vice versa) fails rather than drifting.
+    # The functional/benchmark four, the artifact four, and the capability two. Pinned as an
+    # exact set so adding a table to the DDL without modelling it here (or vice versa) fails
+    # rather than drifting.
     assert set(TABLES) == {
         "test_cases",
         "test_case_runs",
@@ -304,6 +329,8 @@ def test_registry_covers_exactly_the_v2_tables():
         "artifact_refs",
         "artifact_tags",
         "artifact_results",
+        "capabilities",
+        "capability_runs",
     }
 
 
